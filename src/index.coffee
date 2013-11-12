@@ -75,6 +75,7 @@ class Consumer
         @__errors.push errors
       else if not _.isEmpty(jobs)
         #job will be an array!
+        debug "Got jobs #{JSON.stringify(jobs, null, 4)}"
         jobs.forEach (job) => 
           type = job.body.type
           if not type?
@@ -84,7 +85,7 @@ class Consumer
             @__queue.error job
           else
             #find a registered job handler. naive and goes with first match for now
-            for j,worker of @__jobs
+            for j,worker of @__jobHandlers
               if type.match(j)
                 return worker job.body.data, (err) =>
                   if err?
@@ -119,7 +120,7 @@ class Queue
       throw new Error("You must initialize queue with a name")
     if options.env is "production"
       Client = IronMQ.Client
-      @__mq = options.client || new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
+      @__mq = new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
       @__q = @__mq.queue(options.name)
     else #use stub with option to initialize with client defined messages
       Client = IronMQStub.Client

@@ -90,7 +90,6 @@ describe("Queue", function() {
           done();
         });
       });
-
     });
 
     describe("> 1 message from non-empty queue", function() {

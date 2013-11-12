@@ -1,0 +1,16 @@
+{
+  "name": "ironmq-consumer",
+  "version": "0.1.1",
+  "description": "Consumer for an IronMQ queue",
+  "author": "Chris Olivares <chris.olivares@me.com>",
+  "engine": "node 0.10.0",
+  "dependencies": {
+    "iron_mq": "0.2.0",
+    "lodash": "2.3.0",
+    "sleep": "1.1.2"
+  },
+  "devDependencies": {
+    "expect.js": "0.2.0",
+    "mocha": "1.14.0"
+  }
+}

@@ -79,12 +79,8 @@ describe("Queue", function() {
     describe("one message from non-empty queue", function() {
       var queue;
       before(function() {
-        //create ironmq stub with one message injected
-        var ironMQ = new IronMQStub.Client();
-        ioQueue = ironMQ.queue(queueName);
-        ioQueue.setMessages([exampleJob1]);
-        //create
-        queue = new Queue(_.extend(defaultQueueOptions, {client: ironMQ}));
+        //create queue with one message injected
+        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1]}));
       });
 
       it("should return an array with one message", function(done) {
@@ -100,12 +96,8 @@ describe("Queue", function() {
     describe("> 1 message from non-empty queue", function() {
       var queue;
       before(function() {
-        //create ironmq stub with one message injected
-        var ironMQ = new IronMQStub.Client();
-        ioQueue = ironMQ.queue(queueName);
-        ioQueue.setMessages([exampleJob1, exampleJob2]);
-        //create
-        queue = new Queue(_.extend(defaultQueueOptions, {client: ironMQ}));
+        //create queue with two messages injected
+        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1, exampleJob2]}));
       });
 
       it("should return an array with > 1 message in it", function(done) {

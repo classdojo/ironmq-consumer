@@ -46,7 +46,9 @@ class Consumer
 
   register: (job, worker) ->
     @__jobHandlers[job] = worker
-    
+
+
+
 
   deregister: (job) ->
     delete @__jobHandlers[job]
@@ -117,12 +119,14 @@ class Queue
       throw new Error("You must initialize queue with a name")
     if options.env is "production"
       Client = IronMQ.Client
-    else if not options.client
+      @__mq = options.client || new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
+      @__q = @__mq.queue(options.name)
+    else #use stub with option to initialize with client defined messages
       Client = IronMQStub.Client
-    @__mq = options.client || new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
-    @__q = @__mq.queue(options.name)
-
-
+      @__mq = new Client({token: options.token, project_id: options.projectId})
+      @__q = @__mq.queue(options.name)
+      if options.messages
+        @__q.setMessages options.messages
   ###
     delegates to ironmq client GET. Uses defaults options but can pass
     in options to override those.

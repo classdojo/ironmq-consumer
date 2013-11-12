@@ -1,6 +1,7 @@
 IronMQ     = require("iron_mq")
 IronMQStub = require("../test/stubs/ironmq")
 _          = require("lodash")
+debug      = require("debug")("loop")
 
 ###
   Dead simple DojoConsumer that interfaces with ironMq and passes messages back
@@ -35,6 +36,7 @@ class Consumer
 
   constructor: (options) ->
     @__queue = new Queue(options)
+    @__sleepTime = options.sleep || 5
     @__jobHandlers = []
     @__errors =
       count: 0
@@ -47,14 +49,14 @@ class Consumer
     
 
   deregister: (job) ->
-    delete @__jobs[job]
+    delete @__jobHandlers[job]
 
   ###
     An event loop using 1ms ticks.
   ###
 
   start: (cb) ->
-    @__interval = setInterval(@_loop, 5)
+    @__interval = setInterval(@_loop.bind(@), @__sleepTime)
     #delegate
     #handle result appropriately
 
@@ -65,26 +67,30 @@ class Consumer
     console.log "Printing error information"
 
   _loop: () ->
-    @__queue.get (err, job) =>
+    @__queue.get (err, jobs) =>
       if err?
         @__errors.count++
         @__errors.push errors
-      else if job?
-        type = job.body.type
-        if not type?
-          @__errors.count++
-          @__errors.push new Error("Job Id #{job.id} has not `type` field")
-          #increment attempts?
-          @__queue.error job
-        else
-          #find a registered job handler. naive and goes with first match for now
-          for j,worker of @__jobs
-            if type.match(j)
-              return worker job.body.data, (err) =>
-                if err?
-                  @__queue.error job
-                else
-                  @__queue.del job
+      else if not _.isEmpty(jobs)
+        #job will be an array!
+        jobs.forEach (job) => 
+          type = job.body.type
+          if not type?
+            @__errors.count++
+            @__errors.push new Error("Job Id #{job.id} has not `type` field")
+            #increment attempts?
+            @__queue.error job
+          else
+            #find a registered job handler. naive and goes with first match for now
+            for j,worker of @__jobs
+              if type.match(j)
+                return worker job.body.data, (err) =>
+                  if err?
+                    @__queue.error job
+                  else
+                    @__queue.del job
+      else
+        debug "No jobs. Sleeping for #{@__sleepTime} ms"
 
 
 ###

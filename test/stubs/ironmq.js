@@ -120,22 +120,34 @@ Queue.prototype.get = function(options, cb) {
   cb(null, value);
 }
 
+/*
+  Mock del method since when a client gets the message from this
+  stub we simply delete it from the queue.
+*/
 Queue.prototype.del = function(id, cb) {
- //null, '1': { msg: 'Deleted' } }
- //{ '0': [Error: {"msg":"Message not found"}], '1': null }
- //find message in queue
- var index = _.find(this.__messages, function(e) {return e == id});
- if (index < 0) {
-  cb(new Error("Message not found"), null)
- } else {
-  var message = this.__messages[index];
-  this.__messages = this.__messages.splice(index, 1); //remove message from array
-  cb(null, {msg: "Deleted"});
+ if (!_.isString(id)) {
+  throw new Error("`id` must be a string");
+ } else if (!_.isFunction(cb)) {
+  throw new Error("`cb` must be a function");
  }
+  cb(null, {msg: "Deleted"});
 }
 
+
+/*
+  Mock msg_release.
+
+  Note: method doesn't put the message back on the queue.
+*/
 Queue.prototype.msg_release = function(id, options, cb) {
   //just always succeed on release
+  if (!_.isString(id)) {
+    throw new Error("`id` must be a string");
+  } else if (!_.isObject(options)) {
+    throw new Error("`options` must be an object");
+  } else if (!_.isFunction(cb)) {
+    throw new Error("`cb` must be a function");
+  }
   cb(null, {msg: "Released"});
 }
 
@@ -172,7 +184,7 @@ var _popMessage = function(queue) {
     reserved_count: 3,
     push_status: {}
   };
-  var randomId = BaseId + (10000 + Math.floor(Math.random() * 1000));
+  var randomId = String(BaseId + (10000 + Math.floor(Math.random() * 1000)));
   return _.extend(defaultResponse, {id: randomId, body: body});
 }
 

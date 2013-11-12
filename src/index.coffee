@@ -36,7 +36,7 @@ class Consumer
 
   constructor: (options) ->
     @__queue = new Queue(options)
-    @__sleepTime = options.sleep || 5
+    @__sleepTime = options.sleep || 20
     @__jobHandlers = []
     @__errors =
       count: 0
@@ -159,18 +159,18 @@ class Queue
   ###
   del: (job, cb) ->
     cb = cb || ->
-    @__q.del job.id, (error, body) =>
-      cb error
+    @__q.del job.id, cb
 
   ###
     Releases item to go back to queue
   ###
   release: (job, cb) ->
     cb = cb || ->
+    @__q.msg_release job.id, {}, cb
 
 
   error: (job, cb) ->
-    #increment attempts
+    #increment attempts ?
     cb = cb || ->
     @release job, cb
 

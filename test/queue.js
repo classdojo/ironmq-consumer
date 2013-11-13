@@ -19,7 +19,7 @@ describe("Queue", function() {
   var defaultQueueOptions = {
     token: "sometoken",
     projectId: "someprojectId",
-    name: queueName  
+    queueName: queueName  
   };
 
 

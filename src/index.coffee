@@ -43,7 +43,6 @@ class Consumer
       errors: []
 
 
-
   register: (job, worker) ->
     @__jobHandlers[job] = worker
 
@@ -116,16 +115,16 @@ class Queue
   constructor: (options) ->
     if not options.token or not options.projectId
       throw new Error("You must provide proper IronMQ credentials {token: '', projectId: ''}")
-    if not options.name
+    if not options.queueName
       throw new Error("You must initialize queue with a name")
     if options.env is "production"
       Client = IronMQ.Client
       @__mq = new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
-      @__q = @__mq.queue(options.name)
+      @__q = @__mq.queue(options.queueName)
     else #use stub with option to initialize with client defined messages
       Client = IronMQStub.Client
       @__mq = new Client({token: options.token, project_id: options.projectId})
-      @__q = @__mq.queue(options.name)
+      @__q = @__mq.queue(options.queueName)
       if options.messages
         @__q.setMessages options.messages
   ###

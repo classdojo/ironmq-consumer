@@ -2,6 +2,7 @@ IronMQ     = require("iron_mq")
 IronMQStub = require("../test/stubs/ironmq")
 _          = require("lodash")
 debug      = require("debug")("loop")
+jobLog     = require("debug")("jobs")
 
 ###
   Dead simple DojoConsumer that interfaces with ironMq and passes messages back
@@ -74,7 +75,7 @@ class Consumer
         @__errors.push errors
       else if not _.isEmpty(jobs)
         #job will be an array!
-        debug "Got jobs #{JSON.stringify(jobs, null, 4)}"
+        jobLog "#{JSON.stringify(jobs, null, 4)}"
         jobs.forEach (job) => 
           type = job.body.type
           if not type?

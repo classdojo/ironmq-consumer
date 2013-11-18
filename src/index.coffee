@@ -72,7 +72,7 @@ class Consumer
     @__queue.get (err, jobs) =>
       if err?
         @__errors.count++
-        @__errors.push errors
+        @__errors.push err
       else if not _.isEmpty(jobs)
         #job will be an array!
         jobLog "#{JSON.stringify(jobs, null, 4)}"

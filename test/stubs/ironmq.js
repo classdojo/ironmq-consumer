@@ -13,6 +13,9 @@ function Client (opts) {
 }
 
 Client.prototype.queue = function(queueName) {
+  if(!queueName) {
+    throw new Error("Must provide a valid Queue name. It cannot be `undefined`");
+  }
   if (this.__queues[queueName]) {
     return this.__queues[queueName];
   }

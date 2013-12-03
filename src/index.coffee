@@ -64,7 +64,9 @@ class Consumer
 
   _loop: () ->
     n = @__consumerOpts.parallel
+    console.log "GETTING LOOOP", n
     @__queue.get {n: n}, (err, jobs) =>
+      console.log "GOT", err, jobs, jobs.length
       if err
         @__errors.system[new Date().toISOString()] = err
       else if not _.isEmpty(jobs)
@@ -113,11 +115,11 @@ class Queue
     if options.env is "production"
       Client = IronMQ.Client
       @__mq = new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
-      @__q = @__mq.queue(options.queueName)
+      @__q = @__mq.queue(options.name)
     else #use stub with option to initialize with client defined messages
       Client = IronMQStub.Client
       @__mq = new Client({token: options.token, project_id: options.projectId})
-      @__q = @__mq.queue(options.queueName)
+      @__q = @__mq.queue(options.name)
       if options.messages
         @__q.setMessages options.messages
   ###

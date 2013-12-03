@@ -14,6 +14,7 @@ options =
     token: "sometoken"
     projectId: "someprojectId"
     name: "jobstest"
+    env: "production"
   admin:
     port: 8123
     user: "user"

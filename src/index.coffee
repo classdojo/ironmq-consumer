@@ -64,9 +64,7 @@ class Consumer
 
   _loop: () ->
     n = @__consumerOpts.parallel
-    console.log "GETTING LOOOP", n
     @__queue.get {n: n}, (err, jobs) =>
-      console.log "GOT", err, jobs, jobs.length
       if err
         @__errors.system[new Date().toISOString()] = err
       else if not _.isEmpty(jobs)

@@ -174,6 +174,10 @@ Queue.prototype.setMessages = function(messages) {
   }
 }
 
+Queue.prototype._dump = function() {
+  return this.__messages;
+}
+
 exports.Client = Client;
 
 

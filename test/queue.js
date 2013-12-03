@@ -4,6 +4,7 @@ var Queue = require("../lib").Queue;
 var IronMQStub = require("./stubs/ironmq");
 var sleep = require("sleep");
 var _     = require("lodash");
+var jobFixtures = require("./fixtures/testJobs");
 
 /*
 { id: '5942486501293943295',
@@ -23,27 +24,8 @@ describe("Queue", function() {
   };
 
   describe("#get", function() {
-    var exampleJob1 = {
-      body: {
-        "type": "job:subJob",
-        "data": {
-          "job": "one"
-        },
-        "created": "2013-11-04T19:22:37.423Z",
-        "attempts": 0
-      }
-    };
-
-    var exampleJob2 = {
-      body: {
-        "type": "job:subJob",
-        "data": {
-          "job": "two"
-        },
-        "created": "2013-11-04T19:22:38.423Z",
-        "attempts": 0
-      }
-    };
+    var exampleJob1 = jobFixtures.exampleJob1;
+    var exampleJob2 = jobFixtures.exampleJob2;
 
     it("should accept the options parameter", function(done) {
       var queue = new Queue(defaultQueueOptions);

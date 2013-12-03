@@ -2,16 +2,81 @@ var expect = require("expect.js");
 var Consumer = require("../lib");
 var IronMQStub = require("./stubs/ironmq");
 var sleep = require("sleep");
-var request = require("request")
+var request = require("request");
+var jobFixtures = require("./fixtures/testJobs");
+var _ = require("lodash");
+
 
 /* 
- * Tests the 
+ * Tests the full integration loop that consumes the queue.
  */
 
 describe("Consumer", function() {
-
+  var defaultOptions = {
+    consumer: {
+      sleep: 25,
+      parallel: 1
+    },
+    queue: {
+      token: "someToken",
+      projectId: "someProjectId",
+      name: "jobtest",
+      messages: [jobFixtures.exampleJob1, jobFixtures.exampleJob2]
+    }
+  };
   describe("Options", function() {
-    describe("consumer", function() {});
+    describe("consumer", function() {
+      /*
+       * These tests assume that the functions passed to the setTimeout have
+       * runtime < consumer sleep time.
+      */
+      var consumer;
+
+      afterEach(function(done) {
+        if(consumer && consumer.stop) {
+          consumer.stop();
+        }
+        done();
+      });
+
+      it("should pull messages at specified interval", function(done) {
+        consumer = new Consumer(defaultOptions);
+        consumer.start();
+        setTimeout(function(){
+          //checks that messages haven't been taken off queue in this interval.
+          var messages = consumer.__queue._dump();
+          expect(messages).to.have.length(2);
+        }, 5);
+        setTimeout(function() {
+          //checks that one message has been taken off queue
+          var messages = consumer.__queue._dump();
+          expect(messages).to.have.length(1);
+          done();
+        }, 35);
+      });
+
+      it("should default to 1s interval when sleep is not specified", function(done) {
+        consumer = new Consumer({consumer: {parallel:1}, queue: defaultOptions.queue});
+        consumer.start();
+        setTimeout(function() {
+          var messages = consumer.__queue._dump();
+          expect(messages).to.have.length(2);
+        },600);
+
+        setTimeout(function() {
+          var messages = consumer.__queue._dump();
+          expect(messages).to.have.length(1);
+          done();
+        },1300);
+      });
+
+      describe("sleep", function() {
+
+        xit("should pull messages at specified interval", function(done) {
+
+        });
+      });
+    });
 
     describe("queue", function() {});
 

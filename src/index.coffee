@@ -21,7 +21,7 @@ jobLog     = require("debug")("jobs")
 
 DEFAULT =
   consumer:
-    sleep: 20
+    sleep: 1000
     parallel: 10
   queue:
     name: "jobs"
@@ -29,7 +29,7 @@ DEFAULT =
 class Consumer
 
   constructor: (options) ->
-    options = _.merge(DEFAULT, options)
+    options = _.merge(_.cloneDeep(DEFAULT), options)
     @__queue = new Queue(options.queue)
     @__consumerOpts = options.consumer
     @__jobHandlers = []
@@ -155,6 +155,11 @@ class Queue
     cb = cb || ->
     @release job, cb
 
+  ###
+    Hook for testing. Simply dumps the messages from the ironmq stub.
+  ###
+  _dump: () ->
+    return @__q._dump();
 
 Consumer.Queue = Queue   #expose for testing
 

@@ -2,80 +2,52 @@ var expect = require("expect.js");
 var Consumer = require("../lib");
 var IronMQStub = require("./stubs/ironmq");
 var sleep = require("sleep");
+var request = require("request")
 
 /* 
  * Tests the 
  */
 
 describe("Consumer", function() {
-//   var testToken = "";
-//   var testProject = "";
 
-//   describe("#register", function() {
-//     it("should allow us to register a job");
-//   });
+  describe("Options", function() {
+    describe("consumer", function() {});
 
-//   describe("#deregister", function() {
-//     it("should allow");
-//   });
+    describe("queue", function() {});
 
-//   describe("#start", function() {
-//     it("should start the consumer loop");
-//   });
+    describe("admin", function() {});
 
-//   describe("#stop", function() {
-//     it("should stop the consumer loop");
-//   });
+  });
 
-//   describe("#info", function() {
-//     it("should print out useful information about the consumer's runtime");
-//   });
+  describe("admin", function() {
 
-//   describe("#_loop", function() {
+    describe("setup", function() {
+      it("should not setup the admin server if admin options are not passed in");
 
-//     describe("empty queue", function() {
-//       var consumer;
-//       afterEach(function(done) {
-//         consumer.stop();
-//       });
+      it("should properly setup the admin server if admin options are passed in");
 
-//       it("should not error out if queue is empty", function(done) {
-//         var Client = new IronMQStub.Client();
-//         Client.set([]);
-//         consumer = new Consumer({token: token, projectId: projectId, client: Client});
-//         consumer.start();
-//         sleep.sleep(2); //just block for a few seconds.
-//         done();
-//       });
-//     });
+    });
 
-//     describe("improper job data", function() {
-//       it("should log an error", function(done) {
-//         done();
-//       });
+    describe("auth", function() {
 
-//       it("should keep the message on the queue", function(done) {
-//         done();
-//       });
+      it("should return 401 on every route if basic auth is not included in request");
 
-//       it("should increment the attempts count for the message");
-//     }
+      it("should return 401 on every route if wrong credentials are included in request");
 
-//     describe("proper job data", function() {
+      it("should return 200 on every route if proper credentials are included in request");
+    });
 
-//       describe("with a registered worker", function() {
-//         it("should signal success and remove the message from the queue");
-//       });
+    describe("GET /failed-jobs", function() {
 
-//       describe("without a registered worker", function() {
-//         it("should record an error");
+    });
 
-//         it("should keep the message on the queue");
+    describe("GET /failed-jobs/:id", function() {
 
-//         it("should increment the attempts count");
-//       });
-//     });
+    });
 
-//   });
+    describe("DEL /failed-jobs/:id", function() {
+
+    });
+  });
 });
 

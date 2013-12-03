@@ -104,13 +104,19 @@ Queue.prototype.get = function(options, cb) {
     reserved_count: 3,
     push_status: {}
   };
+  var times;
   if (options && options.n > 1) {
     //create array
     if (_.isEmpty(this.__messages)) {
       return cb(null, []);
     }
     var me = this;
-    value = _.times(options.n, function() {
+    if(options.n <= this.__messages.length) {
+      times = options.n;
+    } else {
+      times = this.__messages.length;
+    }
+    value = _.times(times, function() {
       return _popMessage(me);
     });
   }

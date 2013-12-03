@@ -17,11 +17,10 @@ var _     = require("lodash");
 describe("Queue", function() {
   var queueName = "jobtest";
   var defaultQueueOptions = {
-    token: "sometoken",
+    token: "someToken",
     projectId: "someprojectId",
-    queueName: queueName  
+    name: queueName  
   };
-
 
   describe("#get", function() {
     var exampleJob1 = {
@@ -80,7 +79,7 @@ describe("Queue", function() {
       var queue;
       before(function() {
         //create queue with one message injected
-        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1]}));
+        queue = new Queue(_.merge(defaultQueueOptions, {messages: [exampleJob1]}));
       });
 
       it("should return an array with one message", function(done) {
@@ -94,13 +93,21 @@ describe("Queue", function() {
 
     describe("> 1 message from non-empty queue", function() {
       var queue;
-      before(function() {
+      beforeEach(function() {
         //create queue with two messages injected
-        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1, exampleJob2]}));
+        queue = new Queue(_.merge(defaultQueueOptions, {messages: [exampleJob1, exampleJob2]}));
       });
 
-      it("should return an array with > 1 message in it", function(done) {
+      it("should return an array with exactly N messages if n == queue.length where N == queue.length", function(done) {
         queue.get({n: 2}, function(err, messages) {
+          expect(err).to.be(null);
+          expect(messages).to.have.length(2);
+          done();
+        });
+      });
+
+      it("should return an array with exactly N messages if n > queue.length where N == queue.length", function(done) {
+        queue.get({n: 3}, function(err, messages) {
           expect(err).to.be(null);
           expect(messages).to.have.length(2);
           done();

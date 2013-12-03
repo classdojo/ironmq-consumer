@@ -4,44 +4,40 @@ _          = require("lodash")
 debug      = require("debug")("loop")
 jobLog     = require("debug")("jobs")
 
+
 ###
   Dead simple DojoConsumer that interfaces with ironMq and passes messages back
   to workers.  The workers specify a RegEx pattern for the jobs they want to
   handle.
   
-  Pattern matching happens in the order of workers registerd.
+  Pattern matching happens in the order of workers registered.
 
 ###
 
 
-###
-  worker1Script = require("./workers/script1")
-
-  consumer = new Consumer({project: "", token: "", env: "production"})
-  consumer.register "job", worker1Script
-  consumer.start()
-
-###
-
-###
-  Loop is the arbiter between the queue and our internal workers.
 
 
-  queue ---> Loop pulls using consumer ---> Loop delegates to Proper Item --->
-  Loop removes from queue on success/Handles error appropriately --> Repeat
+# DEFAULT options. No default admin.
 
-  There can essentially be some
-###
+DEFAULT =
+  consumer:
+    sleep: 20
+    parallel: 10
+  queue:
+    name: "jobs"
 
 class Consumer
 
   constructor: (options) ->
-    @__queue = new Queue(options)
-    @__sleepTime = options.sleep || 20
+    options = _.merge(DEFAULT, options)
+    @__queue = new Queue(options.queue)
+    @__consumerOpts = options.consumer
     @__jobHandlers = []
     @__errors =
-      count: 0
-      errors: []
+      system: {}
+      common: {}
+    if options.admin
+      _setupAdmin(options.admin)
 
 
   register: (job, worker) ->
@@ -58,9 +54,7 @@ class Consumer
   ###
 
   start: (cb) ->
-    @__interval = setInterval(@_loop.bind(@), @__sleepTime)
-    #delegate
-    #handle result appropriately
+    @__interval = setInterval(@_loop.bind(@), @__consumerOpts.sleep)
 
   stop: (cb) ->
     clearInterval @__interval
@@ -69,27 +63,25 @@ class Consumer
     console.log "Printing error information"
 
   _loop: () ->
-    @__queue.get (err, jobs) =>
-      if err?
-        @__errors.count++
-        @__errors.push err
+    n = @__consumerOpts.parallel
+    @__queue.get {n: n}, (err, jobs) =>
+      if err
+        @__errors.system[new Date().toISOString()] = err
       else if not _.isEmpty(jobs)
         #job will be an array!
         jobLog "#{JSON.stringify(jobs, null, 4)}"
         jobs.forEach (job) => 
           type = job.body.type
-          if not type?
-            @__errors.count++
-            @__errors.push new Error("Job Id #{job.id} has not `type` field")
+          if not type
             #increment attempts?
-            @__queue.error job
+            @__queue.error job, new Error("Job Id #{job.id} has no `type` field")
           else
             #find a registered job handler. naive and goes with first match for now
             for j,worker of @__jobHandlers
               if type.match(j)
                 return worker job.body.data, (err) =>
-                  if err?
-                    @__queue.error job
+                  if err
+                    @__queue.error job, err
                   else
                     @__queue.del job
       else
@@ -115,8 +107,8 @@ class Queue
   ###
   constructor: (options) ->
     if not options.token or not options.projectId
-      throw new Error("You must provide proper IronMQ credentials {token: '', projectId: ''}")
-    if not options.queueName
+      throw new Error("You must provide proper IronMQ credentials {queue: {token: '', projectId: ''}}")
+    if not options.name
       throw new Error("You must initialize queue with a name")
     if options.env is "production"
       Client = IronMQ.Client
@@ -169,12 +161,29 @@ class Queue
     @__q.msg_release job.id, {}, cb
 
 
-  error: (job, cb) ->
-    #increment attempts ?
+  error: (job, error, cb) ->
     cb = cb || ->
     @release job, cb
 
 
 Consumer.Queue = Queue   #expose for testing
+
+_auth = (opts) ->
+  return (req, res, next) ->
+    if auth.basic.username is opts.user and auth.basic.password is opts.password
+      next()
+    else
+      res.json 401, {message: "Not Authorized"}
+
+_setupAdmin = (opts) ->
+  server = restify.createServer()
+  server.use(restify.authorizationParser())
+  server.get {path: "/failed-jobs", version: "0.0.1"}, _auth(opts), (req, res) ->
+    res.json 200, {}
+
+  server.get {path: "/failed-jobs/:id", version: "0.0.1"}, _auth(opts), (req, res) ->
+
+  server.del {path: "/failed-jobs/:id", version: "0.0.1"}, _auth(opts), (req, res) ->
+
 
 module.exports = Consumer

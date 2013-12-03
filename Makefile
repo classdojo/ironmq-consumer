@@ -9,6 +9,6 @@ clean:
 	@rm -rf lib/
 
 test:
-	./node_modules/.bin/mocha test/queue.js
+	./node_modules/.bin/mocha test/
 
 .PHONY: test

@@ -87,16 +87,6 @@ class Consumer
       else
         debug "No jobs. Sleeping for #{@__sleepTime} ms"
 
-
-###
-{ id: '5942486501293943295',
-  body: '{"type":"mailgun:update_list","data":{"list":"teachers@classdojo.mailgun.org","memberId":"corey.brady@peelsb.com","body":{"address":"corey.brady@peelsb.com","name":"Mr. Corey Brady","vars":{"title":"Mr.","first_name":"Corey","last_name":"Brady"}}},"created":"\\"2013-11-04T19:22:37.423Z\\"","attempts":0}',
-  timeout: 60,
-  reserved_count: 1,
-  push_status: {} }
-###
-
-
 ###
   abstracts away details of ironmq client
 ###

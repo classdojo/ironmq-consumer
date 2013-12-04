@@ -69,19 +69,49 @@ describe("Consumer", function() {
           done();
         },1300);
       });
-
-      describe("sleep", function() {
-
-        xit("should pull messages at specified interval", function(done) {
-
-        });
-      });
     });
 
-    describe("queue", function() {});
+    describe("queue", function() {
+      var consumer;
 
-    describe("admin", function() {});
+      afterEach(function(done) {
+        if(consumer && consumer.stop) {
+          consumer.stop();
+        }
+        done();
+      });
 
+      it("should require `token` on initialization", function(done) {
+        options = _.cloneDeep(defaultOptions);
+        delete options.queue.token;
+        try {
+          new Consumer(options);
+        } catch (e) {
+          return done();
+        }
+        done(new Error("`queue.token` omitted and Consumer did not throw an error"));
+      });
+
+      it("should require `projectId` on initialization", function(done) {
+        options = _.cloneDeep(defaultOptions);
+        delete options.queue.projectId;
+        try {
+          new Consumer(options);
+        } catch (e) {
+          return done();
+        }
+        done(new Error("`queue.projectId` omitted and Consumer did not throw an error"));
+      });
+
+      it("should load messages if specified in the options hash", function(done) {
+        options = _.cloneDeep(defaultOptions);
+        options.queue.messages = [jobFixtures.exampleJob1, jobFixtures.exampleJob2];
+        var consumer = new Consumer(options);
+        var messages = consumer.__queue._dump();
+        expect(messages).to.have.length(2);
+        done();
+      });
+    });
   });
 
   describe("admin", function() {

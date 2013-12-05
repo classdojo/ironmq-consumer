@@ -1,6 +1,7 @@
 var expect = require("expect.js");
 var expect = require("expect.js");
 var Queue = require("../lib").Queue;
+var ErrorJournal = require("../lib").ErrorJournal;
 var IronMQStub = require("./stubs/ironmq");
 var sleep = require("sleep");
 var _     = require("lodash");
@@ -20,12 +21,40 @@ describe("Queue", function() {
   var defaultQueueOptions = {
     token: "someToken",
     projectId: "someprojectId",
-    name: queueName  
+    name: queueName,
   };
+  beforeEach(function() {
+    defaultQueueOptions.errorJournal = new ErrorJournal();
+  });
+
+  describe("options constructor", function() {
+    it("should require `token` on initialialization", function(done) {
+      options = _.cloneDeep(defaultQueueOptions);
+      delete options.token;
+      try {
+        new Consumer(options);
+      } catch (e) {
+        return done();
+      }
+      done(new Error("`token` omitted and Queue did not throw an error"));
+    });
+
+    it("should require `projectId` on initialization", function(done) {
+      options = _.cloneDeep(defaultQueueOptions);
+      delete options.projectId;
+      try {
+        new Consumer(options);
+      } catch (e) {
+        return done();
+      }
+      done(new Error("`projectId` omitted and Queue did not throw an error"));
+    });
+  });
 
   describe("#get", function() {
     var exampleJob1 = jobFixtures.exampleJob1;
     var exampleJob2 = jobFixtures.exampleJob2;
+    var badJob1     = jobFixtures.badJob1;
 
     it("should accept the options parameter", function(done) {
       var queue = new Queue(defaultQueueOptions);
@@ -61,7 +90,7 @@ describe("Queue", function() {
       var queue;
       before(function() {
         //create queue with one message injected
-        queue = new Queue(_.merge(defaultQueueOptions, {messages: [exampleJob1]}));
+        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1]}));
       });
 
       it("should return an array with one message", function(done) {
@@ -77,7 +106,7 @@ describe("Queue", function() {
       var queue;
       beforeEach(function() {
         //create queue with two messages injected
-        queue = new Queue(_.merge(defaultQueueOptions, {messages: [exampleJob1, exampleJob2]}));
+        queue = new Queue(_.extend(defaultQueueOptions, {messages: [exampleJob1, exampleJob2]}));
       });
 
       it("should return an array with exactly N messages if n == queue.length where N == queue.length", function(done) {
@@ -96,8 +125,44 @@ describe("Queue", function() {
         });
       });
     });
-  });
 
+    describe("bad data", function() {
+
+      it("should callback with no error and an empty array when n=1", function(done) {
+        var payload = {
+          messages: [badJob1]
+        };
+        queue = new Queue(_.extend(defaultQueueOptions, payload));
+        queue.get({n: 1}, function(err, messages) {
+          expect(err).to.be(null);
+          expect(messages).to.have.length(0);
+          done();
+        });
+      });
+
+      describe("n > 1 with one bad job", function() {
+        var payload = {
+          messages: [badJob1, exampleJob1]
+        };
+        before(function() {
+          queue = new Queue(_.extend(defaultQueueOptions, payload));
+        });
+
+        it("should return the proper jobs", function(done) {
+          queue.get({n: 2}, function(err, messages) {
+            expect(err).to.be(null);
+            expect(messages).to.have.length(1);
+            done();
+          });
+        });
+
+        it("should remember the bad job", function(done) {
+          expect(_.isEmpty(queue.__errorJournal.dump())).to.be(false);
+          done();
+        });
+      });
+    });
+  });
 });
 
 

@@ -24,7 +24,7 @@ describe("Consumer", function() {
       messages: [jobFixtures.exampleJob1, jobFixtures.exampleJob2]
     }
   };
-  describe("Options", function() {
+  describe("options", function() {
     describe("consumer", function() {
       /*
        * These tests assume that the functions passed to the setTimeout have
@@ -34,9 +34,8 @@ describe("Consumer", function() {
 
       afterEach(function(done) {
         if(consumer && consumer.stop) {
-          consumer.stop();
+          consumer.stop(done);
         }
-        done();
       });
 
       it("should pull messages at specified interval", function(done) {
@@ -76,31 +75,8 @@ describe("Consumer", function() {
 
       afterEach(function(done) {
         if(consumer && consumer.stop) {
-          consumer.stop();
-        }
-        done();
-      });
-
-      it("should require `token` on initialization", function(done) {
-        options = _.cloneDeep(defaultOptions);
-        delete options.queue.token;
-        try {
-          new Consumer(options);
-        } catch (e) {
-          return done();
-        }
-        done(new Error("`queue.token` omitted and Consumer did not throw an error"));
-      });
-
-      it("should require `projectId` on initialization", function(done) {
-        options = _.cloneDeep(defaultOptions);
-        delete options.queue.projectId;
-        try {
-          new Consumer(options);
-        } catch (e) {
-          return done();
-        }
-        done(new Error("`queue.projectId` omitted and Consumer did not throw an error"));
+          consumer.stop(done);
+        } else {done();}
       });
 
       it("should load messages if specified in the options hash", function(done) {
@@ -115,33 +91,89 @@ describe("Consumer", function() {
   });
 
   describe("admin", function() {
+    var consumer;
+    var options = _.cloneDeep(defaultOptions);
+    options.queue.messages.push(jobFixtures.badJob1);
+    options.admin = {
+      port: 9876,
+      user: "testUser",
+      password: "test"
+    };
 
     describe("setup", function() {
-      it("should not setup the admin server if admin options are not passed in");
+      afterEach(function(done) {
+        consumer.stop(done);
+      });
+      it("should not setup the admin server if admin options are not passed in", function(done) {
+        consumer = new Consumer(defaultOptions);
+        request.get("http://localhost:9876/status", function(error) { //9876 is default admin port
+          expect(error.message).to.contain("ECONNREFUSED");
+          done();
+        });
+      });
 
-      it("should properly setup the admin server if admin options are passed in");
-
+      it("should properly setup the admin server on default port 9876 if admin options are passed in and port omitted", function(done) {
+        var clonedOptions = _.cloneDeep(options);
+        delete clonedOptions.admin.port
+        consumer = new Consumer(clonedOptions);
+        request.get("http://localhost:9876/status", function(error, response) {
+          expect(error).to.be(null);
+          expect(response.statusCode).to.not.be(null);
+          done();
+        });
+      });
+      it("should setup the admin server on the user defined port if admin options are passed in", function(done) {
+        var clonedOptions = _.cloneDeep(options);
+        clonedOptions.admin.port = 9000;
+        consumer = new Consumer(clonedOptions);
+        request.get("http://localhost:9000/status", function(error, response) {
+          expect(error).to.be(null);
+          expect(response.statusCode).to.not.be(null);
+          done();
+        });
+      });
     });
 
-    describe("auth", function() {
+    describe("routes", function() {
+      before(function(done) {
+        consumer = new Consumer(options);
+        done();
+      });
+      after(function(done) {
+        consumer.stop(done);
+      });
 
-      it("should return 401 on every route if basic auth is not included in request");
+      describe("GET /status", function() {
+        var endpoint = "http://localhost:9876/status";
+        it("should return 401 if auth is not included in the request", function(done) {
+          request(endpoint, function(error, response,b) {
+            expect(error).to.be(null);
+            expect(response.statusCode).to.be(401);
+            done();
+          });
+        });
+      });
 
-      it("should return 401 on every route if wrong credentials are included in request");
+      describe("GET /failed-jobs", function() {
+        var endpoint = "http://localhost:9876/failed-jobs";
+        it("should return 401 if auth is not included in the request",function(done) {
+          request(endpoint, function(error, response,b) {
+            expect(error).to.be(null);
+            expect(response.statusCode).to.be(401);
+            done();
+          });
+        });
+      });
 
-      it("should return 200 on every route if proper credentials are included in request");
-    });
+      describe("GET /failed-jobs/:id", function() {
+        it("should return 401 if auth is not included in the request");
 
-    describe("GET /failed-jobs", function() {
+      });
 
-    });
+      describe("DEL /failed-jobs/:id", function() {
+        it("should return 401 if auth is not included in the request");
 
-    describe("GET /failed-jobs/:id", function() {
-
-    });
-
-    describe("DEL /failed-jobs/:id", function() {
-
+      });
     });
   });
 });

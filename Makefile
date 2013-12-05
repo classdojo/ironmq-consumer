@@ -1,3 +1,5 @@
+REPORTER=dot
+
 build: clean
 	@coffee --compile --output lib/ src/
 
@@ -9,6 +11,6 @@ clean:
 	@rm -rf lib/
 
 test:
-	@./node_modules/.bin/mocha test/
+	@./node_modules/.bin/mocha test/ --reporter $(REPORTER)
 
 .PHONY: test

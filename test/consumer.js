@@ -5,7 +5,10 @@ var sleep = require("sleep");
 var request = require("request");
 var jobFixtures = require("./fixtures/testJobs");
 var _ = require("lodash");
+var SimpleErrorWorker = require("./workers/simpleError");
 
+
+var TICK_TIME = 25;
 
 /* 
  * Tests the full integration loop that consumes the queue.
@@ -14,7 +17,7 @@ var _ = require("lodash");
 describe("Consumer", function() {
   var defaultOptions = {
     consumer: {
-      sleep: 25,
+      sleep: TICK_TIME,
       parallel: 1
     },
     queue: {
@@ -51,7 +54,7 @@ describe("Consumer", function() {
           var messages = consumer.__queue._dump();
           expect(messages).to.have.length(1);
           done();
-        }, 35);
+        }, TICK_TIME + 15);
       });
 
       it("should default to 1s interval when sleep is not specified", function(done) {
@@ -87,6 +90,31 @@ describe("Consumer", function() {
         expect(messages).to.have.length(2);
         done();
       });
+    });
+  });
+
+  describe("error job", function() {
+    var consumer;
+    before(function(done) {
+      consumer = new Consumer(defaultOptions);
+      consumer.register("job", SimpleErrorWorker);
+      consumer.start();
+      done();
+    });
+
+    after(function(done) {
+      if(consumer && consumer.stop) {
+        consumer.stop(done);
+      } else {done();}
+    });
+
+    it("should mark a job as an error", function(done) {
+      //wait until after one tick and check if errors array is empty
+      setTimeout(function() {
+        var errors = consumer.errorJournal.queue.dump();
+        expect(_.isEmpty(errors)).to.be(false);
+        done();
+      }, TICK_TIME + TICK_TIME/5);
     });
   });
 
@@ -146,7 +174,7 @@ describe("Consumer", function() {
       describe("GET /status", function() {
         var endpoint = "http://localhost:9876/status";
         it("should return 401 if auth is not included in the request", function(done) {
-          request(endpoint, function(error, response,b) {
+          request(endpoint, function(error, response, b) {
             expect(error).to.be(null);
             expect(response.statusCode).to.be(401);
             done();
@@ -157,7 +185,7 @@ describe("Consumer", function() {
       describe("GET /failed-jobs", function() {
         var endpoint = "http://localhost:9876/failed-jobs";
         it("should return 401 if auth is not included in the request",function(done) {
-          request(endpoint, function(error, response,b) {
+          request(endpoint, function(error, response, b) {
             expect(error).to.be(null);
             expect(response.statusCode).to.be(401);
             done();
@@ -165,14 +193,15 @@ describe("Consumer", function() {
         });
       });
 
-      describe("GET /failed-jobs/:id", function() {
-        it("should return 401 if auth is not included in the request");
-
-      });
-
       describe("DEL /failed-jobs/:id", function() {
-        it("should return 401 if auth is not included in the request");
-
+        var endpoint = "http://localhost:9876/failed-jobs/someId"
+        it("should return 401 if auth is not included in the request", function(done) {
+          request.del(endpoint, function(error, response, b) {
+            expect(error).to.be(null);
+            expect(response.statusCode).to.be(401);
+            done();
+          });
+        });
       });
     });
   });

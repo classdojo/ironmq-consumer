@@ -197,8 +197,15 @@ var _popMessage = function(queue) {
     reserved_count: 3,
     push_status: {}
   };
-  var randomId = String(BaseId + (10000 + Math.floor(Math.random() * 1000)));
-  return _.extend(defaultResponse, {id: randomId, body: body});
+  //if message comes with an id, use that one.
+  var id;
+  if(body.id) {
+    id = body.id;
+    body = _.omit(body, "id");
+  } else {
+    id = String(BaseId + (10000 + Math.floor(Math.random() * 1000)));
+  }
+  return _.extend(defaultResponse, {id: id, body: body});
 }
 
 var _pushMessage = function(queue, message) {

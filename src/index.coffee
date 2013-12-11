@@ -193,6 +193,9 @@ class ErrorJournal
   add: (id, message) ->
     @__journal[id] = message
 
+  get: (id) ->
+    @__journal[id]
+
   del: (id) ->
     delete @__journal[id]
 
@@ -227,10 +230,18 @@ _setupAdmin = (opts, consumer) ->
   server = restify.createServer()
   server.use(restify.authorizationParser())
   server.get {path: "/failed-jobs", version: "0.0.1"}, _auth(opts), (req, res) ->
+    res.json 200, consumer.errorJournal
 
   server.get {path: "/failed-jobs/:id", version: "0.0.1"}, _auth(opts), (req, res) ->
+    if not consumer.errorJournal.queue.contains req.params.id
+      return res.json 404, {status: "Not found"}
+    res.json 200, consumer.errorJournal.queue.get req.params.id
 
   server.del {path: "/failed-jobs/:id", version: "0.0.1"}, _auth(opts), (req, res) ->
+    if not consumer.errorJournal.queue.contains req.params.id
+      return res.json 404, {status: "Not found"}
+    consumer.errorJournal.queue.del req.params.id
+    res.json 200, {status: "Success"} 
 
   server.get {path: "/status", version: "0.0.1"}, _auth(opts), (req, res) ->
     r =
@@ -240,6 +251,7 @@ _setupAdmin = (opts, consumer) ->
         system: Object.keys(consumer.errorJournal.system).length
         queue: Object.keys(consumer.errorJournal.queue).length
     res.json 200, r
+
   server.listen(opts.port || DEFAULT_ADMIN_PORT)
   consumer.server = server;
 

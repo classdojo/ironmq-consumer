@@ -6,7 +6,7 @@ var request = require("request");
 var jobFixtures = require("./fixtures/testJobs");
 var _ = require("lodash");
 var SimpleErrorWorker = require("./workers/simpleError");
-
+var CounterIncWithError = require("./workers/counterIncrementWithError");
 
 var TICK_TIME = 25;
 
@@ -93,28 +93,56 @@ describe("Consumer", function() {
     });
   });
 
-  describe("error job", function() {
-    var consumer;
-    before(function(done) {
-      consumer = new Consumer(defaultOptions);
-      consumer.register("job", SimpleErrorWorker);
-      consumer.start();
-      done();
-    });
-
-    after(function(done) {
-      if(consumer && consumer.stop) {
-        consumer.stop(done);
-      } else {done();}
-    });
-
-    it("should mark a job as an error", function(done) {
-      //wait until after one tick and check if errors array is empty
-      setTimeout(function() {
-        var errors = consumer.errorJournal.queue.dump();
-        expect(_.isEmpty(errors)).to.be(false);
+  describe("Job processing", function() {
+    describe("simple job error", function() {
+      var consumer;
+      before(function(done) {
+        consumer = new Consumer(defaultOptions);
+        consumer.register("job", SimpleErrorWorker);
+        consumer.start();
         done();
-      }, TICK_TIME + TICK_TIME/5);
+      });
+
+      after(function(done) {
+        if(consumer && consumer.stop) {
+          consumer.stop(done);
+        } else {done();}
+      });
+
+      it("should mark a job as an error if the job processing fails", function(done) {
+        //wait until after one tick and check if errors array is empty
+        setTimeout(function() {
+          var errors = consumer.errorJournal.queue.dump();
+          expect(_.isEmpty(errors)).to.be(false);
+          done();
+        }, TICK_TIME + TICK_TIME/5);
+      });
+    });
+
+    describe("error across multiple ticks", function() {
+      var consumer;
+      before(function(done) {
+        var options = _.cloneDeep(defaultOptions);
+        options.queue.messages = [jobFixtures.exampleJob2];
+        consumer = new Consumer(options);
+        consumer.register("job", CounterIncWithError);
+        consumer.start();
+        done();
+      });
+      after(function(done) {
+        CounterIncWithError.resetCounter();
+        if(consumer && consumer.stop) {
+          consumer.stop(done);
+        } else {done();}
+      });
+
+      it("should not reprocess a job that was marked as an error", function(done) {
+        setTimeout(function() {
+          //counter worker should only have been called once
+          expect(CounterIncWithError.counter()).to.be(1);
+          done();
+        }, TICK_TIME * 5);
+      });
     });
   });
 

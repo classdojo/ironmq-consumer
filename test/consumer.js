@@ -260,7 +260,6 @@ describe("Consumer", function() {
           it("should not return that job when fetched from a new list of failed jobs", function(done) {
             request.get("http://localhost:9876/failed-jobs", {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
               var newFailedJobIds = Object.keys(JSON.parse(b).queue);
-
               expect(newFailedJobIds).to.have.length(2);
               expect(newFailedJobIds).to.not.contain(failedJobId);
               done();

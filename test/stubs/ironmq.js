@@ -191,23 +191,21 @@ var _popMessage = function(queue) {
     return undefined;
   }
   //if there's a message package up with some default meta-data.
-  var BaseId = 5940635112690500000;
+  var BaseId = "5940635112690500000";
   var defaultResponse = {
     timeout: 60,
     reserved_count: 3,
     push_status: {}
   };
   //if message comes with an id, use that one.
-  var id;
-  if(body.id) {
-    id = body.id;
-    body = _.omit(body, "id");
-  } else {
-    id = String(BaseId + (10000 + Math.floor(Math.random() * 1000)));
-  }
+  id = BaseId + String((10000 + Math.floor(Math.random() * 100000)));
   return _.extend(defaultResponse, {id: id, body: body});
 }
 
+
+/*
+  A message always gets put on the queue as a stringified body.
+*/
 var _pushMessage = function(queue, message) {
   if (_.isString(message)) {
     //just push onto queue

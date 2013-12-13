@@ -46,12 +46,12 @@ describe("Consumer", function() {
         consumer.start();
         setTimeout(function(){
           //checks that messages haven't been taken off queue in this interval.
-          var messages = consumer.__queue._dump();
+          var messages = consumer.queue._dump();
           expect(messages).to.have.length(2);
         }, 5);
         setTimeout(function() {
           //checks that one message has been taken off queue
-          var messages = consumer.__queue._dump();
+          var messages = consumer.queue._dump();
           expect(messages).to.have.length(1);
           done();
         }, TICK_TIME + 15);
@@ -61,12 +61,12 @@ describe("Consumer", function() {
         consumer = new Consumer({consumer: {parallel:1}, queue: defaultOptions.queue});
         consumer.start();
         setTimeout(function() {
-          var messages = consumer.__queue._dump();
+          var messages = consumer.queue._dump();
           expect(messages).to.have.length(2);
         },600);
 
         setTimeout(function() {
-          var messages = consumer.__queue._dump();
+          var messages = consumer.queue._dump();
           expect(messages).to.have.length(1);
           done();
         },1300);
@@ -86,7 +86,7 @@ describe("Consumer", function() {
         options = _.cloneDeep(defaultOptions);
         options.queue.messages = [jobFixtures.exampleJob1, jobFixtures.exampleJob2];
         var consumer = new Consumer(options);
-        var messages = consumer.__queue._dump();
+        var messages = consumer.queue._dump();
         expect(messages).to.have.length(2);
         done();
       });
@@ -147,9 +147,8 @@ describe("Consumer", function() {
   });
 
   describe("admin", function() {
-    var consumer;
     var options = _.cloneDeep(defaultOptions);
-    options.queue.messages.push(jobFixtures.badJob1);
+    options.queue.messages.push(jobFixtures.exampleJob2);
     options.admin = {
       port: 9876,
       user: "testUser",
@@ -157,6 +156,7 @@ describe("Consumer", function() {
     };
 
     describe("setup", function() {
+      var consumer;
       afterEach(function(done) {
         consumer.stop(done);
       });
@@ -191,9 +191,12 @@ describe("Consumer", function() {
     });
 
     describe("routes", function() {
+      var consumer;
       before(function(done) {
         consumer = new Consumer(options);
-        done();
+        consumer.register("job", SimpleErrorWorker);
+        consumer.start()
+        setTimeout(done, TICK_TIME * 10);
       });
       after(function(done) {
         consumer.stop(done);
@@ -212,22 +215,56 @@ describe("Consumer", function() {
 
       describe("GET /failed-jobs", function() {
         var endpoint = "http://localhost:9876/failed-jobs";
-        it("should return 401 if auth is not included in the request",function(done) {
+        it("should return 401 if auth is not included in the request", function(done) {
           request(endpoint, function(error, response, b) {
             expect(error).to.be(null);
             expect(response.statusCode).to.be(401);
             done();
           });
         });
+
+        it("should return a list of failed jobs when hitting that endpoint", function(done) {
+          request.get(endpoint, {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+            var body = JSON.parse(b);
+            expect(Object.keys(body.queue)).to.have.length(3);
+            done();
+          });
+        });
       });
 
       describe("DEL /failed-jobs/:id", function() {
-        var endpoint = "http://localhost:9876/failed-jobs/someId"
         it("should return 401 if auth is not included in the request", function(done) {
-          request.del(endpoint, function(error, response, b) {
+          request.del("http://localhost:9876/failed-jobs/someId", function(error, response, b) {
             expect(error).to.be(null);
             expect(response.statusCode).to.be(401);
             done();
+          });
+        });
+        describe("with auth", function() {
+          var failedJobList;
+          var failedJobId;
+          before(function(done) {
+            request.get("http://localhost:9876/failed-jobs", {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+              failedJobList = JSON.parse(b).queue;
+              failedJobId = Object.keys(failedJobList).shift();
+              done();
+            });
+          });
+          it("should allow me to properly delete a job", function(done) {
+            request.del("http://localhost:9876/failed-jobs/" + failedJobId, {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+              expect(response.statusCode).to.be(200);
+              done();
+            });
+          });
+
+          it("should not return that job when fetched from a new list of failed jobs", function(done) {
+            request.get("http://localhost:9876/failed-jobs", {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+              var newFailedJobIds = Object.keys(JSON.parse(b).queue);
+
+              expect(newFailedJobIds).to.have.length(2);
+              expect(newFailedJobIds).to.not.contain(failedJobId);
+              done();
+            });
           });
         });
       });

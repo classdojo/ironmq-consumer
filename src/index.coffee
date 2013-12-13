@@ -34,12 +34,12 @@ class Consumer
     @errorJournal = 
       system: new ErrorJournal()
       queue: new ErrorJournal()
-    options = _.merge(
+    options = _.merge({},
       _.cloneDeep(DEFAULT_OPTIONS),
       {queue: {errorJournal: @errorJournal.queue}},
       options
     );
-    @__queue = new Queue(options.queue)
+    @queue = new Queue(options.queue)
     @__consumerOpts = options.consumer
     @__jobHandlers = []
     @processed = 0
@@ -75,7 +75,7 @@ class Consumer
 
   _loop: () ->
     n = @__consumerOpts.parallel
-    @__queue.get {n: n}, (err, jobs) =>
+    @queue.get {n: n}, (err, jobs) =>
       if err
         @__errorJournals.system.add new Date().toISOString(), err
       else if not _.isEmpty(jobs)
@@ -85,7 +85,7 @@ class Consumer
           type = job.body.type
           if not type
             #increment attempts?
-            @__queue.error job, new Error("Job Id #{job.id} has no `type` field")
+            @queue.error job, new Error("Job Id #{job.id} has no `type` field")
           else
             #find a registered job handler. naive and goes with first match for now
             for j,worker of @__jobHandlers
@@ -93,10 +93,10 @@ class Consumer
                 return worker job.body.data, (err) =>
                   if err
                     @errorJournal.queue.add job.id, {job: job, error: err.message} 
-                    @__queue.error job, err
+                    @queue.error job, err
                   else
                     @processed++
-                    @__queue.del job
+                    @queue.del job
       else
         loopLog "No jobs. Sleeping for #{@__sleepTime} ms"
 
@@ -230,7 +230,9 @@ _setupAdmin = (opts, consumer) ->
   server = restify.createServer()
   server.use(restify.authorizationParser())
   server.get {path: "/failed-jobs", version: "0.0.1"}, _auth(opts), (req, res) ->
-    res.json 200, consumer.errorJournal
+    queue = consumer.errorJournal.queue.dump()
+    system = consumer.errorJournal.system.dump()
+    res.json 200, {queue: queue, system: system}
 
   server.get {path: "/failed-jobs/:id", version: "0.0.1"}, _auth(opts), (req, res) ->
     if not consumer.errorJournal.queue.contains req.params.id
@@ -241,7 +243,11 @@ _setupAdmin = (opts, consumer) ->
     if not consumer.errorJournal.queue.contains req.params.id
       return res.json 404, {status: "Not found"}
     consumer.errorJournal.queue.del req.params.id
-    res.json 200, {status: "Success"} 
+    consumer.queue.del {id: req.params.id}, (err) ->
+      if err?
+        res.json 500, {status: err.message}
+      else
+        res.json 200, {status: "Success"} 
 
   server.get {path: "/status", version: "0.0.1"}, _auth(opts), (req, res) ->
     r =

@@ -16,7 +16,7 @@ options =
     name: "jobstest"
     env: "production"
   admin:
-    port: 8123
+    port: 8123  #default is 9876
     user: "user"
     password: "somePassword"
 

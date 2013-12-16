@@ -254,8 +254,8 @@ _setupAdmin = (opts, consumer) ->
       upSince: start.toISOString()
       jobsProcessed: consumer.processed
       errors:
-        system: Object.keys(consumer.errorJournal.system).length
-        queue: Object.keys(consumer.errorJournal.queue).length
+        system: Object.keys(consumer.errorJournal.system.dump()).length
+        queue: Object.keys(consumer.errorJournal.queue.dump()).length
     res.json 200, r
 
   server.listen(opts.port || DEFAULT_ADMIN_PORT)

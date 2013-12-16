@@ -192,6 +192,12 @@ describe("Consumer", function() {
 
     describe("routes", function() {
       var consumer;
+      var auth = {
+        auth: {
+          user: "testUser",
+          password: "test"
+        }
+      };
       before(function(done) {
         consumer = new Consumer(options);
         consumer.register("job", SimpleErrorWorker);
@@ -204,12 +210,33 @@ describe("Consumer", function() {
 
       describe("GET /status", function() {
         var endpoint = "http://localhost:9876/status";
+        var statusResponse;
+        before(function(done) {
+          request.get(endpoint, auth, function(error, response, b) {
+            statusResponse = JSON.parse(b);
+            done();
+          });
+        });
+
         it("should return 401 if auth is not included in the request", function(done) {
           request(endpoint, function(error, response, b) {
             expect(error).to.be(null);
             expect(response.statusCode).to.be(401);
             done();
           });
+        });
+
+        it("should report the correct number of jobs processed", function(done) {
+          expect(statusResponse.jobsProcessed).to.be(0);
+          done();
+        });
+        it("should report the correct number of system errors", function(done) {
+          expect(statusResponse.errors.system).to.be(0);
+          done();
+        });
+        it("should report the correct number of queue errors", function(done) {
+          expect(statusResponse.errors.queue).to.be(3);
+          done();
         });
       });
 
@@ -224,7 +251,7 @@ describe("Consumer", function() {
         });
 
         it("should return a list of failed jobs when hitting that endpoint", function(done) {
-          request.get(endpoint, {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+          request.get(endpoint, auth, function(error, response, b) {
             var body = JSON.parse(b);
             expect(Object.keys(body.queue)).to.have.length(3);
             done();
@@ -244,21 +271,30 @@ describe("Consumer", function() {
           var failedJobList;
           var failedJobId;
           before(function(done) {
-            request.get("http://localhost:9876/failed-jobs", {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+            request.get("http://localhost:9876/failed-jobs", auth, function(error, response, b) {
               failedJobList = JSON.parse(b).queue;
               failedJobId = Object.keys(failedJobList).shift();
               done();
             });
           });
           it("should allow me to properly delete a job", function(done) {
-            request.del("http://localhost:9876/failed-jobs/" + failedJobId, {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+            request.del("http://localhost:9876/failed-jobs/" + failedJobId, auth, function(error, response, b) {
               expect(response.statusCode).to.be(200);
               done();
             });
           });
 
           it("should not return that job when fetched from a new list of failed jobs", function(done) {
-            request.get("http://localhost:9876/failed-jobs", {auth: {user: "testUser", password: "test"}}, function(error, response, b) {
+            var options = {
+              uri: "http://localhost:9876/failed-jobs",
+              method: "GET",
+              auth: {
+                user: "testUser",
+                password: "test"
+              }
+            };
+            request(options, function(error, response, b) {
+              expect(response.statusCode).to.be(200);
               var newFailedJobIds = Object.keys(JSON.parse(b).queue);
               expect(newFailedJobIds).to.have.length(2);
               expect(newFailedJobIds).to.not.contain(failedJobId);

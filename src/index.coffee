@@ -92,7 +92,8 @@ class Consumer
               if type.match(j)
                 return worker job.body.data, (err) =>
                   if err
-                    @errorJournal.queue.add job.id, {job: job, error: err.message} 
+                    errorMessage = err.message || err
+                    @errorJournal.queue.add job.id, {job: job, error: errorMessage} 
                     @queue.error job, err
                   else
                     @processed++

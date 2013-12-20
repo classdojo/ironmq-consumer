@@ -24,7 +24,7 @@ describe("Consumer", function() {
       token: "someToken",
       projectId: "someProjectId",
       name: "jobtest",
-      messages: [jobFixtures.exampleJob1, jobFixtures.exampleJob2]
+      messages: [jobFixtures.exampleJob1, jobFixtures.exampleJob2],
     }
   };
   describe("options", function() {
@@ -46,13 +46,13 @@ describe("Consumer", function() {
         consumer.start();
         setTimeout(function(){
           //checks that messages haven't been taken off queue in this interval.
-          var messages = consumer.queue._dump();
-          expect(messages).to.have.length(2);
+          var queueMessages = consumer.queue.dump();
+          expect(queueMessages.messages).to.have.length(2);
         }, 5);
         setTimeout(function() {
           //checks that one message has been taken off queue
-          var messages = consumer.queue._dump();
-          expect(messages).to.have.length(1);
+          var queueMessages = consumer.queue.dump();
+          expect(queueMessages.messages).to.have.length(1);
           done();
         }, TICK_TIME + 15);
       });
@@ -61,13 +61,13 @@ describe("Consumer", function() {
         consumer = new Consumer({consumer: {parallel:1}, queue: defaultOptions.queue});
         consumer.start();
         setTimeout(function() {
-          var messages = consumer.queue._dump();
-          expect(messages).to.have.length(2);
+          var queueMessages = consumer.queue.dump();
+          expect(queueMessages.messages).to.have.length(2);
         },600);
 
         setTimeout(function() {
-          var messages = consumer.queue._dump();
-          expect(messages).to.have.length(1);
+          var queueMessages = consumer.queue.dump();
+          expect(queueMessages.messages).to.have.length(1);
           done();
         },1300);
       });
@@ -86,8 +86,8 @@ describe("Consumer", function() {
         options = _.cloneDeep(defaultOptions);
         options.queue.messages = [jobFixtures.exampleJob1, jobFixtures.exampleJob2];
         var consumer = new Consumer(options);
-        var messages = consumer.queue._dump();
-        expect(messages).to.have.length(2);
+        var queueMessages = consumer.queue.dump();
+        expect(queueMessages.messages).to.have.length(2);
         done();
       });
     });
@@ -99,7 +99,6 @@ describe("Consumer", function() {
       before(function(done) {
         consumer = new Consumer(defaultOptions);
         consumer.register("job", SimpleErrorWorker);
-        consumer.start();
         done();
       });
 
@@ -110,12 +109,12 @@ describe("Consumer", function() {
       });
 
       it("should mark a job as an error if the job processing fails", function(done) {
-        //wait until after one tick and check if errors array is empty
-        setTimeout(function() {
+        consumer.eventLoop.on("tick", function() {
           var errors = consumer.errorJournal.queue.dump();
           expect(_.isEmpty(errors)).to.be(false);
           done();
-        }, TICK_TIME + TICK_TIME/5);
+        });
+        consumer.start();
       });
     });
 
@@ -124,9 +123,9 @@ describe("Consumer", function() {
       before(function(done) {
         var options = _.cloneDeep(defaultOptions);
         options.queue.messages = [jobFixtures.exampleJob2];
+        options.queue.releaseTime = TICK_TIME;
         consumer = new Consumer(options);
         consumer.register("job", CounterIncWithError);
-        consumer.start();
         done();
       });
       after(function(done) {
@@ -137,11 +136,18 @@ describe("Consumer", function() {
       });
 
       it("should not reprocess a job that was marked as an error", function(done) {
-        setTimeout(function() {
-          //counter worker should only have been called once
-          expect(CounterIncWithError.counter()).to.be(1);
-          done();
-        }, TICK_TIME * 5);
+        var tickTimes = 0;
+        consumer.eventLoop.on("tick", function() {
+          tickTimes++;
+          if(tickTimes > 5) {
+            expect(CounterIncWithError.counter()).to.be(1);
+            var queueMessages = consumer.queue.dump();
+            expect(queueMessages.messages.concat(queueMessages.outstandingMessages))
+                .to.have.length(1);
+            done();
+          }
+        });
+        consumer.start();
       });
     });
   });

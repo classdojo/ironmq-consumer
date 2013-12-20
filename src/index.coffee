@@ -133,7 +133,8 @@ class Queue
     else #use stub with option to initialize with client defined messages
       Client = IronMQStub.Client
       @__mq = new Client({token: options.token, project_id: options.projectId})
-      @__q = @__mq.queue(options.name)
+      releaseTime = if options.releaseTime then [options.releaseTime] else []
+      @__q = @__mq.queue.apply(@__mq, [options.name].concat(releaseTime))
       if options.messages
         @__q.setMessages options.messages
 
@@ -185,8 +186,8 @@ class Queue
   ###
     Hook for testing. Simply dumps the messages from the ironmq stub.
   ###
-  _dump: () ->
-    return @__q._dump();
+  dump: () ->
+    return @__q.dump();
 
 
 ###

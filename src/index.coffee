@@ -1,9 +1,11 @@
 IronMQ     = require("iron_mq")
-IronMQStub = require("../test/stubs/ironmq")
+IronMQStub = require("stubs").IronMQ
 _          = require("lodash")
 loopLog    = require("debug")("loop")
 jobLog     = require("debug")("jobs")
 restify    = require("restify")
+
+EventLoop = require("./utils").EventLoop
 
 
 ###
@@ -40,6 +42,8 @@ class Consumer
       options
     );
     @queue = new Queue(options.queue)
+    @eventLoop = new EventLoop(options.consumer.sleep)
+    @eventLoop.on "tick", @_loop.bind(@)
     @__consumerOpts = options.consumer
     @__jobHandlers = []
     @processed = 0
@@ -61,10 +65,10 @@ class Consumer
   ###
 
   start: (cb) ->
-    @__interval = setInterval(@_loop.bind(@), @__consumerOpts.sleep)
+    @eventLoop.start()
 
   stop: (cb) ->
-    clearInterval @__interval
+    @eventLoop.stop()
     if @server
       @server.close(cb)
     else
@@ -81,23 +85,28 @@ class Consumer
       else if not _.isEmpty(jobs)
         #job will be an array!
         jobLog "#{JSON.stringify(jobs, null, 4)}"
-        jobs.forEach (job) => 
-          type = job.body.type
-          if not type
-            #increment attempts?
-            @queue.error job, new Error("Job Id #{job.id} has no `type` field")
+        jobs.forEach (job) =>
+          if @errorJournal.queue.contains job.id
+            @queue.release job, (err) =>
+              if err #record the system error releasing the job
+                @errorJournal.system.add new Error("Problem releasing an already errored out job #{err.message || err}")
           else
-            #find a registered job handler. naive and goes with first match for now
-            for j,worker of @__jobHandlers
-              if type.match(j)
-                return worker job.body.data, (err) =>
-                  if err
-                    errorMessage = err.message || err
-                    @errorJournal.queue.add job.id, {job: job, error: errorMessage} 
-                    @queue.error job, err
-                  else
-                    @processed++
-                    @queue.del job
+            type = job.body.type
+            if not type
+              #increment attempts?
+              @queue.error job, new Error("Job Id #{job.id} has no `type` field")
+            else
+              #find a registered job handler. naive and goes with first match for now
+              for j,worker of @__jobHandlers
+                if type.match(j)
+                  return worker job.body.data, (err) =>
+                    if err
+                      errorMessage = err.message || err
+                      @errorJournal.queue.add job.id, {job: job, error: errorMessage} 
+                      @queue.error job, err
+                    else
+                      @processed++
+                      @queue.del job
       else
         loopLog "No jobs. Sleeping for #{@__sleepTime} ms"
 

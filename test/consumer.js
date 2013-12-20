@@ -1,6 +1,6 @@
 var expect = require("expect.js");
 var Consumer = require("../lib");
-var IronMQStub = require("./stubs/ironmq");
+var IronMQStub = require("stubs").IronMQ;
 var sleep = require("sleep");
 var request = require("request");
 var jobFixtures = require("./fixtures/testJobs");

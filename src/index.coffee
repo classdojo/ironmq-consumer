@@ -54,9 +54,6 @@ class Consumer
   register: (job, worker) ->
     @__jobHandlers[job] = worker
 
-
-
-
   deregister: (job) ->
     delete @__jobHandlers[job]
 
@@ -161,7 +158,7 @@ class Queue
           message.body = JSON.parse message.body
           returnThese.push message
         catch e
-          @__errorJournal.add message.id, new Error("Bad json data for message: #{message.body}")
+          @__errorJournal.add message.id, new Error("Bad json data for message: #{JSON.stringify(message.body, null, 4)}")
       cb null, returnThese
 
   ###
@@ -177,7 +174,6 @@ class Queue
   release: (job, cb) ->
     cb = cb || ->
     @__q.msg_release job.id, {}, cb
-
 
   error: (job, error, cb) ->
     cb = cb || ->
@@ -259,6 +255,12 @@ _setupAdmin = (opts, consumer) ->
         res.json 500, {status: err.message}
       else
         res.json 200, {status: "Success"} 
+
+  server.post {path: "/failed-jobs/:id/retry", verions: "0.0.1"}, _auth(opts), (req, res) ->
+    if not consumer.errorJournal.queue.contains req.params.id
+      return res.json 404, {status: "Not found"}
+    consumer.errorJournal.queue.del req.params.id
+    res.json 200, {status: "Success"}
 
   server.get {path: "/status", version: "0.0.1"}, _auth(opts), (req, res) ->
     r =

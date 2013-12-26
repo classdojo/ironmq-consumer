@@ -120,7 +120,7 @@ describe("Consumer", function() {
 
     describe("error across multiple ticks", function() {
       var consumer;
-      before(function(done) {
+      beforeEach(function(done) {
         var options = _.cloneDeep(defaultOptions);
         options.queue.messages = [jobFixtures.exampleJob2];
         options.queue.releaseTime = TICK_TIME;
@@ -128,7 +128,7 @@ describe("Consumer", function() {
         consumer.register("job", CounterIncWithError);
         done();
       });
-      after(function(done) {
+      afterEach(function(done) {
         CounterIncWithError.resetCounter();
         if(consumer && consumer.stop) {
           consumer.stop(done);
@@ -149,6 +149,7 @@ describe("Consumer", function() {
         });
         consumer.start();
       });
+
     });
   });
 
@@ -204,17 +205,16 @@ describe("Consumer", function() {
           password: "test"
         }
       };
-      before(function(done) {
-        consumer = new Consumer(options);
-        consumer.register("job", SimpleErrorWorker);
-        consumer.start()
-        setTimeout(done, TICK_TIME * 10);
-      });
-      after(function(done) {
-        consumer.stop(done);
-      });
-
       describe("GET /status", function() {
+        before(function(done) {
+          consumer = new Consumer(options);
+          consumer.register("job", SimpleErrorWorker);
+          consumer.start()
+          setTimeout(done, TICK_TIME * 10);
+        });
+        after(function(done) {
+          consumer.stop(done);
+        });
         var endpoint = "http://localhost:9876/status";
         var statusResponse;
         before(function(done) {
@@ -247,6 +247,15 @@ describe("Consumer", function() {
       });
 
       describe("GET /failed-jobs", function() {
+        before(function(done) {
+          consumer = new Consumer(options);
+          consumer.register("job", SimpleErrorWorker);
+          consumer.start()
+          setTimeout(done, TICK_TIME * 10);
+        });
+        after(function(done) {
+          consumer.stop(done);
+        });
         var endpoint = "http://localhost:9876/failed-jobs";
         it("should return 401 if auth is not included in the request", function(done) {
           request(endpoint, function(error, response, b) {
@@ -266,6 +275,15 @@ describe("Consumer", function() {
       });
 
       describe("DEL /failed-jobs/:id", function() {
+        before(function(done) {
+          consumer = new Consumer(options);
+          consumer.register("job", SimpleErrorWorker);
+          consumer.start()
+          setTimeout(done, TICK_TIME * 10);
+        });
+        after(function(done) {
+          consumer.stop(done);
+        });
         it("should return 401 if auth is not included in the request", function(done) {
           request.del("http://localhost:9876/failed-jobs/someId", function(error, response, b) {
             expect(error).to.be(null);
@@ -305,6 +323,63 @@ describe("Consumer", function() {
               expect(newFailedJobIds).to.have.length(2);
               expect(newFailedJobIds).to.not.contain(failedJobId);
               done();
+            });
+          });
+        });
+      });
+      describe("POST /failed-jobs/:id/retry", function() {
+        before(function(done) {
+          var opts = _.cloneDeep(options);
+          consumer = new Consumer(opts);
+          consumer.register("job", CounterIncWithError);
+          consumer.start()
+          setTimeout(done, TICK_TIME * 10);
+        });
+        after(function(done) {
+          consumer.stop(done);
+          CounterIncWithError.resetCounter();
+        });
+        it("should return 401 if auth is not included in the request", function(done) {
+          request.post("http://localhost:9876/failed-jobs/someId/retry", function(error, response, b) {
+            expect(error).to.be(null);
+            expect(response.statusCode).to.be(401);
+            done();
+          });
+        });
+        describe("with auth", function() {
+          var failedJobList;
+          var failedJobId;
+          before(function(done) {
+            var options = {
+              uri: "http://localhost:9876/failed-jobs",
+              method: "GET",
+              auth: {
+                user: "testUser",
+                password: "test"
+              }
+            };
+            request(options, function(error, response, b) {
+              failedJobList = JSON.parse(b).queue;
+              failedJobId = Object.keys(failedJobList).shift();
+              done();
+            });
+          });
+          it("should retry a failed job", function(done) {
+            var requestOpts = {
+              uri: "http://localhost:9876/failed-jobs/" + failedJobId + "/retry",
+              method: "POST",
+              auth: {
+                user: "testUser",
+                password: "test"
+              }
+            };
+            request(requestOpts, function(error, response, b) {
+              expect(error).to.be(null);
+              expect(response.statusCode).to.be(200);
+              setTimeout(function() {
+                expect(CounterIncWithError.counter()).to.be(4);
+                done();
+              }, TICK_TIME * 5);
             });
           });
         });

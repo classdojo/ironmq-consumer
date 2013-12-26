@@ -9,13 +9,13 @@
     "iron_mq": "0.2.0",
     "lodash": "2.3.0",
     "debug": "0.7.3",
-    "restify": "2.6.0"
+    "restify": "2.6.0",
+    "stubs": "git+ssh://git@github.com:classdojo/stubs.git#master"
   },
   "devDependencies": {
     "expect.js": "0.2.0",
     "mocha": "1.14.0",
     "sleep": "1.1.2",
-    "request": "2.27.0",
-    "stubs": "git+ssh://git@github.com:classdojo/stubs.git#master"
+    "request": "2.27.0"
   }
 }

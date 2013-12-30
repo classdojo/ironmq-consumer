@@ -78,7 +78,7 @@ class Consumer
     n = @__consumerOpts.parallel
     @queue.get {n: n}, (err, jobs) =>
       if err
-        @__errorJournals.system.add new Date().toISOString(), err
+        @errorJournals.system.add new Date().toISOString(), err
       else if not _.isEmpty(jobs)
         #job will be an array!
         jobLog "#{JSON.stringify(jobs, null, 4)}"

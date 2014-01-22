@@ -88,15 +88,15 @@ class Consumer
               if err #record the system error releasing the job
                 @errorJournal.system.add new Error("Problem releasing an already errored out job #{err.message || err}")
           else
-            type = job.body.type
-            if not type
+            service = job.body.service
+            if not service
               #increment attempts?
-              @queue.error job, new Error("Job Id #{job.id} has no `type` field")
+              @queue.error job, new Error("Job Id #{job.id} has no `service` field")
             else
               #find a registered job handler. naive and goes with first match for now
               for j,worker of @__jobHandlers
-                if type.match(j)
-                  return worker job.body.data, (err) =>
+                if service.match(j)
+                  return worker _.omit(job.body, "service"), (err) =>
                     if err
                       errorMessage = err.message || err
                       @errorJournal.queue.add job.id, {job: job, error: errorMessage} 

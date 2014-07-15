@@ -1,6 +1,6 @@
 {
   "name": "ironmq-consumer",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Consumer for an IronMQ queue",
   "author": "Chris Olivares <chris.olivares@me.com>",
   "engine": "node 0.10.0",

@@ -125,6 +125,11 @@ class Queue
     @__errorJournal = options.errorJournal
     if options.env is "production"
       Client = IronMQ.Client
+      config =
+        token: options.token
+        project_id: options.projectId
+      if options.host?
+        config.host = options.host
       @__mq = new Client({token: options.token, project_id: options.projectId}) #options.client used for testing
       @__q = @__mq.queue(options.name)
     else #use stub with option to initialize with client defined messages
